@@ -2,6 +2,36 @@ import numpy as np
 from scipy.io.wavfile import read, write
 from scipy import signal
 
+class InvalidInputError(Exception):
+    pass
+
+def genSine(freq, dur, fs=44100, amp=1, phi=0):
+    t = np.arange(0, dur, 1/fs)
+    return amp * np.sin(2*np.pi * freq * t + phi)
+
+def genSaw(freq, dur, fs=44100, amp=1, phi=0):
+    saw = genSine(freq, dur, fs, amp, phi)
+    nyquist = fs / 2
+    harms = int(nyquist / freq)
+    for i in range (2, harms+1):
+        saw += genSine(f=freq*i, amp=(amp*(1/i)), fs=fs, dur=dur, phi=phi)
+    return saw
+
+def genSquare(freq, dur, fs=44100, amp=1, phi=0):
+    square = genSine(freq, dur, fs, amp, phi)
+    nyquist = fs / 2
+    harms = int(nyquist / freq)
+    for i in range (3, harms+1, 2):
+        square += genSine(f=freq*i, amp=(amp*(1/i)), fs=fs, dur=dur, phi=phi)
+    return square
+
+def genTriangle(freq, dur, fs=44100, amp=1, phi=0):
+    triangle = genSine(freq, dur, fs, amp, phi)
+    nyquist = fs / 2
+    harms = int(nyquist / freq)
+    for i in range (3, harms+1, 2):
+        triangle += genSine(f=freq*i, amp=(amp*(1/i**2)), fs=fs, dur=dur, phi=phi)
+    return triangle
 
 # TODO: Replace the code below with your implementation of the waveforms.
 # Hint: You may want to write more helper functions to create the waveforms
@@ -19,22 +49,44 @@ def gen_wave(type, freq, dur, fs=44100, amp=1, phi=0):
     The function should return a numpy array
     wave (numpy array) = The generated waveform
     """
-  
+    type = str(type)
+    freq = float(freq)
+    dur = float(dur)
+    fs = float(fs)
+    amp = float(amp)
+    phi = float(phi)
+    typeArray = np.array(['sine', 'square', 'saw', 'triangle'])
     wave = np.array([])
 
-    if type == 'sine':
-        # create sinusoid
-        wave = amp * np.sin(2*np.pi*freq*np.arange(0,dur,1/fs) + phi)
-    elif type == 'saw':
-        # create saw
-        wave = np.array([])
-    elif type == 'square':
-        # create square
-        wave = np.array([])
-    elif type == 'triangle':
-        # create triangle
-        wave = np.array([])
-    return wave
+    try:
+        if(type(type) == str) & (freq < fs/2) & (freq > 0) & (amp >= 0) & (dur > 0) & (fs > 0):
+            if type == 'sine':
+                # create sinusoid
+                wave = genSine(freq, dur, fs, amp, phi)
+            elif type == 'saw':
+                # create saw
+                wave = genSaw(freq, dur, fs, amp, phi)
+            elif type == 'square':
+                # create square
+                wave = genSquare(freq, dur, fs, amp, phi)
+            elif type == 'triangle':
+                # create triangle
+                wave = genTriangle(freq, dur, fs, amp, phi)
+            return wave
+        elif(type(type) != str):
+            raise InvalidInputError('Type must be a string')
+        elif(freq >= fs/2):
+            raise InvalidInputError('Frequency will cause aliasing')
+        elif(freq <= 0):
+            raise InvalidInputError('Frequency must be greater than 0')
+        elif(amp < 0):
+            raise InvalidInputError('Amplitude must be greater than or equal to 0')
+        elif(dur <= 0):
+            raise InvalidInputError('Duration must be greater than 0')
+        elif(fs <= 0):
+            raise InvalidInputError('Sampling frequency must be greater than 0')
+    except InvalidInputError as e:
+        print(e)        
     
 
 # TODO: Replace the code below with your implementation of an ADSR
@@ -115,8 +167,17 @@ def filter(data, type, cutoff_freq, fs=44100, order=5):
     The function should return a numpy array
     sig (numpy array) = filtered signal
     """
-    sig = data
+    nyq = 0.5 * fs
+    normal_cuttoff = cutoff_freq / nyq
+
+    (b, a) = butter(order, normal_cuttoff, btype=type, fs=fs)
+    sig = filtfilt(b, a, data)
+
     return sig
+
+def convert_to_float(file):
+    file_c = file.astype(np.float32, order='C')/32768.0 #divide by max int
+    return(file_c)
 
 def reverb(data, ir, dry_wet=0.5):
     """
@@ -129,7 +190,9 @@ def reverb(data, ir, dry_wet=0.5):
     The function should return a numpy array
     sig (numpy array) = signal with reverb
     """
-    sig = data
+    convert_to_float(data)
+    convert_to_float(ir)
+    sig = np.convolve(data, ir)
     return sig
 
 def delay(data, delay_time, dry_wet=0.5, fs=44100):
@@ -144,5 +207,10 @@ def delay(data, delay_time, dry_wet=0.5, fs=44100):
     The function should return a numpy array
     sig (numpy array) = signal with a delay
     """
-    sig = data
+    data = data / abs(data).max()
+    copy = data.copy()
+    pad = np.zeros(int(fs/1000*delay_time))
+    orig = np.concatenate((data, pad))
+    delay = np.concatenate((pad, copy))
+    sig = orig + delay
     return sig
