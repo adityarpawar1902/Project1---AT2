@@ -168,7 +168,7 @@ def am_synth(carrier_type, carrier_freq, mod_depth, mod_ratio, dur, fs=44100, am
         elif (mod_depth < 0):
             raise InvalidInputError('Modulation depth must be greater than or equal to 0.')
         elif (mod_ratio <= 0):
-            raise InvalidInputError('MOdulation ratio must be greater than 0.')
+            raise InvalidInputError('Modulation ratio must be greater than 0.')
     except InvalidInputError as e:
         print(e)
 
