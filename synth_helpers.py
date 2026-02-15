@@ -11,6 +11,8 @@ def genSine(freq, dur, fs=44100, amp=1, phi=0):
     t = np.arange(0, dur, 1/fs)
     return amp * np.sin(2*np.pi * freq * t + phi)
 
+# push check bruhhhh
+
 def genSaw(freq, dur, fs=44100, amp=1, phi=0):
     saw = genSine(freq, dur, fs, amp, phi)
     nyquist = fs / 2
