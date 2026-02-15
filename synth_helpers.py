@@ -111,7 +111,73 @@ def adsr(data, attack, decay, sustain, release, fs=44100):
     The function should return a numpy array
     sig (numpy array) = the modified, enveloped signal
     """
-    sig = data
+    t = len(data)/fs
+
+    if attack is None:
+        attack = (1/5 * t)
+        print("Attack time not specified. a_time set to default of 1/5 of audio length.")
+
+    if decay is None:
+        decay = (1/5 * t)
+        if sustain != None:
+            print("Decay time not specified. d_time set to default of 1/5 of audio length.")
+
+    if release is None:
+        release = (1/5 * t)
+        print("Release time not specified. r_time set to default of 1/5 of audio length.")
+    elif release < 0.02 and not (t-0.02 <= attack <= t):
+        release = 0.02
+        print("Release time must be at least 20ms. r_time set to 20ms.")
+    elif (t-0.02 <= attack <= t):
+        release = t - attack
+        print("Attack time goes to within 20ms of end of audio signal. Release time set to amount of remaining ms, or: ", release)
+
+    if attack + decay + release > t:
+        attack = (1/5 * t)
+        decay = (1/5 * t)
+        release = (1/5 * t)
+        print("Attack, decay and release time combine to a duration longer than input audio. Please input smaller values. Values set to defaults (each 1/5 of audio length).")
+
+    if sustain is None: 
+        a_samp = int(attack * fs)
+        d_samp = 0
+        r_samp = int(release * fs)
+        s_samp = 0
+        zero_arr = np.zeros((len(data) - a_samp - d_samp - r_samp))
+        zero_samp =len(zero_arr)
+        env_samp = a_samp + d_samp + r_samp + s_samp + zero_samp #for error handling only
+        print("No sustain input. Sustain and decay parameters nullified, only attack and release applied. Amplitude of 0 applied to remainder of audio.")
+    else: 
+        a_samp = int(attack * fs)
+        d_samp = int(decay * fs)
+        r_samp = int(release * fs)
+        s_samp = int(len(data) - a_samp - d_samp - r_samp)
+        zero_arr = []
+        zero_samp = len(zero_arr)
+        env_samp = a_samp + d_samp + r_samp + s_samp + zero_samp #for error handling only
+
+    if env_samp != len(data) and s_lvl is None:
+       zero_arr = np.zeros(len(data) - a_samp - d_samp - r_samp + (len(data) - env_samp))
+       zero_samp = len(zero_arr)
+       env_samp = a_samp + d_samp + r_samp + s_samp + zero_samp
+    else: 
+       s_samp = s_samp + (len(data) - env_samp)
+       env_samp = a_samp + d_samp + r_samp + s_samp + zero_samp
+    #Compensates envelope length in case of length inconsistency in envelope array and original audio array caused by truncation by the int function.
+
+    if sustain is None:
+        a = np.linspace(0, 1, a_samp)
+        r = np.linspace(1, 0, r_samp)
+        z = np.full(len(zero_arr), 0)
+        env = np.concatenate([a,r,z])
+    else: 
+        a = np.linspace(0, 1, a_samp)
+        d = np.linspace(1, sustain, d_samp)
+        s = np.full(s_samp, sustain)
+        r = np.linspace(sustain, 0, r_samp)
+        env = np.concatenate([a,d,s,r])
+
+    sig = env * data
     return sig
 
 
@@ -199,6 +265,8 @@ def filter(data, type, cutoff_freq, fs=44100, order=5):
     nyq = 0.5 * fs
     normal_cuttoff = cutoff_freq / nyq
 
+    #AI SHIT: if band pass/band stop, cutoff_freq should be a list of two frequencies, and normal_cutoff should be a list of two values. Also, type_option should include bandpass and bandstop. Then, in the if statement, you would need to check if type is in the new type_option, and if type is bandpass or bandstop, then use the new normal_cutoff and btype in the butter function.
+    #should be an array rather than a float (cutoff for bandpass/bandstop 
     try:
         if (type in type_option) & (type(type) == str) & (cutoff_freq > 0) & (fs > 0) & (order > 0 and order <= 6):
            nyq = 0.5 * fs
