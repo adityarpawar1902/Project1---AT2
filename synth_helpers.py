@@ -56,7 +56,10 @@ def gen_wave(type, freq, dur, fs=44100, amp=1, phi=0):
     dur = float(dur)
     fs = float(fs)
     amp = float(amp)
-    phi = float(phi)
+    if type(phi) == float or type(phi) == int:
+        phi = float(phi)
+    else:
+        phi = phi
     type_option = np.array(['sine', 'square', 'saw', 'triangle'])
     wave = np.array([])
 
@@ -131,8 +134,26 @@ def fm_synth(carrier_type, carrier_freq, mod_index, mod_ratio, dur, fs=44100, am
     The function should return a numpy array
     sig (numpy array) = frequency modulated signal
     """
-    sig = gen_wave(carrier_type, carrier_freq, dur, fs=fs)
-    return sig
+    carrier_type = str(carrier_type)
+    carrier_freq = float(carrier_freq)
+    mod_index = float(mod_index)
+    mod_ratio = float(mod_ratio)
+    dur = float(dur)
+    fs = float(fs)
+    amp = float(amp)
+    modulator_type = str(modulator_type)
+
+    try:
+        if (mod_index >= 0) and (mod_ratio > 0):
+            modulator = gen_wave(modulator_type, mod_ratio*carrier_freq, dur, fs = fs, amp=amp)
+            sig = gen_wave(carrier_type, carrier_type, dur, fs=fs, amp=amp, phi=(mod_index*modulator))
+            return sig
+        elif (mod_index < 0):
+            raise InvalidInputError('Modulator index should be greater than or equal to 0.')
+        elif (mod_ratio <= 0):
+            raise InvalidInputError('Modulator ratio must be greater than 0.')
+    except InvalidInputError as e:
+        return e
 
 # TODO: Replace the code below with your implementation of a AM synthesis
 def am_synth(carrier_type, carrier_freq, mod_depth, mod_ratio, dur, fs=44100, amp=1, modulator_type='sine'):
