@@ -1,4 +1,6 @@
 import numpy as np
+from IPython.display import Audio
+from scipy.signal import butter, filtfilt
 from scipy.io.wavfile import read, write
 from scipy import signal
 
@@ -55,11 +57,11 @@ def gen_wave(type, freq, dur, fs=44100, amp=1, phi=0):
     fs = float(fs)
     amp = float(amp)
     phi = float(phi)
-    typeArray = np.array(['sine', 'square', 'saw', 'triangle'])
+    type_option = np.array(['sine', 'square', 'saw', 'triangle'])
     wave = np.array([])
 
     try:
-        if(type(type) == str) & (freq < fs/2) & (freq > 0) & (amp >= 0) & (dur > 0) & (fs > 0):
+        if (type in type_option) & (type(type) == str) & (freq < fs/2) & (freq > 0) & (amp >= 0) & (dur > 0) & (fs > 0):
             if type == 'sine':
                 # create sinusoid
                 wave = genSine(freq, dur, fs, amp, phi)
@@ -72,7 +74,9 @@ def gen_wave(type, freq, dur, fs=44100, amp=1, phi=0):
             elif type == 'triangle':
                 # create triangle
                 wave = genTriangle(freq, dur, fs, amp, phi)
-            return wave
+            return Audio(wave, rate=fs)
+        elif (type not in type_option):
+            raise InvalidInputError('Type must be sine, square, saw, or triangle')
         elif(type(type) != str):
             raise InvalidInputError('Type must be a string')
         elif(freq >= fs/2):
@@ -86,7 +90,7 @@ def gen_wave(type, freq, dur, fs=44100, amp=1, phi=0):
         elif(fs <= 0):
             raise InvalidInputError('Sampling frequency must be greater than 0')
     except InvalidInputError as e:
-        print(e)        
+        return e        
     
 
 # TODO: Replace the code below with your implementation of an ADSR
@@ -147,8 +151,26 @@ def am_synth(carrier_type, carrier_freq, mod_depth, mod_ratio, dur, fs=44100, am
     The function should return a numpy array
     sig (numpy array) = amplitude modulated signal
     """
-    sig = gen_wave(carrier_type, carrier_freq, dur, fs=fs)
-    return sig
+    carrier_type = str(carrier_type)
+    carrier_freq = float(carrier_freq)
+    mod_depth = float(mod_depth)
+    mod_ratio = float(mod_ratio)
+    dur = float(dur)
+    fs = float(fs)
+    amp = float(amp)
+    modulator_type = str(modulator_type)
+    try:
+        if (mod_depth >= 0) & (mod_ratio > 0):
+            carrier = gen_wave(carrier_type, carrier_freq, dur, fs=fs)
+            modulator = 1 + gen_wave(modulator_type, carrier_freq*mod_ratio, dur, fs=fs)
+            sig = carrier * (mod_depth * modulator)
+            return sig
+        elif (mod_depth < 0):
+            raise InvalidInputError('Modulation depth must be greater than or equal to 0.')
+        elif (mod_ratio <= 0):
+            raise InvalidInputError('MOdulation ratio must be greater than 0.')
+    except InvalidInputError as e:
+        print(e)
 
 
 # TODO: Complete at least one of the functions below: filter, reverb, delay.
@@ -167,13 +189,33 @@ def filter(data, type, cutoff_freq, fs=44100, order=5):
     The function should return a numpy array
     sig (numpy array) = filtered signal
     """
+    type = str(type)
+    cutoff_freq = float(cutoff_freq)
+    fs = float(fs)
+    order = int(order)
+    type_option = np.array(['lowpass', 'highpass'])
     nyq = 0.5 * fs
     normal_cuttoff = cutoff_freq / nyq
 
-    (b, a) = butter(order, normal_cuttoff, btype=type, fs=fs)
-    sig = filtfilt(b, a, data)
-
-    return sig
+    try:
+        if (type in type_option) & (type(type) == str) & (cutoff_freq > 0) & (fs > 0) & (order > 0 and order <= 6):
+           nyq = 0.5 * fs
+           normal_cuttoff = cutoff_freq / nyq 
+           (b, a) = butter(order, normal_cuttoff, btype=type, fs=fs)
+           sig = filtfilt(b, a, data)
+           return sig
+        elif (type not in type_option):
+            raise InvalidInputError('Type must be lowpass or highpass')
+        elif (type(type) != str):
+            raise InvalidInputError('Type must be a string')
+        elif (cutoff_freq <= 0):
+            raise InvalidInputError('Cutoff frequency must be greater than 0')
+        elif (fs <= 0):
+            raise InvalidInputError('Sampling frequency must be greater than 0')
+        elif (order <= 0 or order > 6):
+            raise InvalidInputError('Order must be between 1 and 6')
+    except InvalidInputError as e:
+        return e
 
 def convert_to_float(file):
     file_c = file.astype(np.float32, order='C')/32768.0 #divide by max int
@@ -192,7 +234,7 @@ def reverb(data, ir, dry_wet=0.5):
     """
     convert_to_float(data)
     convert_to_float(ir)
-    sig = np.convolve(data, ir)
+    sig = np.convolve(data, dry_wet * ir)
     return sig
 
 def delay(data, delay_time, dry_wet=0.5, fs=44100):
@@ -212,5 +254,5 @@ def delay(data, delay_time, dry_wet=0.5, fs=44100):
     pad = np.zeros(int(fs/1000*delay_time))
     orig = np.concatenate((data, pad))
     delay = np.concatenate((pad, copy))
-    sig = orig + delay
+    sig = orig + (dry_wet * delay)
     return sig
