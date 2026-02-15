@@ -206,7 +206,6 @@ def fm_synth(carrier_type, carrier_freq, mod_index, mod_ratio, dur, fs=44100, am
     The function should return a numpy array
     sig (numpy array) = frequency modulated signal
     """
-<<<<<<< HEAD
     carrier_type = str(carrier_type)
     carrier_freq = float(carrier_freq)
     mod_index = float(mod_index)
@@ -227,9 +226,6 @@ def fm_synth(carrier_type, carrier_freq, mod_index, mod_ratio, dur, fs=44100, am
             raise InvalidInputError('Modulator ratio must be greater than 0.')
     except InvalidInputError as e:
         return e
-=======
-    
->>>>>>> main
 
 # TODO: Replace the code below with your implementation of a AM synthesis
 def am_synth(carrier_type, carrier_freq, mod_depth, mod_ratio, dur, fs=44100, amp=1, modulator_type='sine'):
