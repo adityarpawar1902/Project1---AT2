@@ -115,7 +115,7 @@ def adsr(data, attack, decay, sustain, release, fs=44100):
     sig (numpy array) = the modified, enveloped signal
     """
     t = len(data)/fs
-
+#merge check
     a_time = ((attack/100) * t) * 1000
     d_time = ((decay/100) * t) * 1000
     r_time = ((release/100) * t) * 1000
