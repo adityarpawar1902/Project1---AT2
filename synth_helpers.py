@@ -11,7 +11,7 @@ def genSine(freq, dur, fs=44100, amp=1, phi=0):
     t = np.arange(0, dur, 1/fs)
     return amp * np.sin(2*np.pi * freq * t + phi)
 
-# push check bruhhhh
+# push check
 
 def genSaw(freq, dur, fs=44100, amp=1, phi=0):
     saw = genSine(freq, dur, fs, amp, phi)
@@ -113,44 +113,48 @@ def adsr(data, attack, decay, sustain, release, fs=44100):
     """
     t = len(data)/fs
 
-    if attack is None:
-        attack = (1/5 * t)
+    a_time = ((attack/100) * t) * 1000
+    d_time = ((decay/100) * t) * 1000
+    r_time = ((release/100) * t) * 1000
+
+    if a_time is None:
+        a_time = (1/5 * t)
         print("Attack time not specified. a_time set to default of 1/5 of audio length.")
 
-    if decay is None:
-        decay = (1/5 * t)
+    if d_time is None:
+        d_time = (1/5 * t)
         if sustain != None:
             print("Decay time not specified. d_time set to default of 1/5 of audio length.")
 
-    if release is None:
-        release = (1/5 * t)
+    if r_time is None:
+        r_time = (1/5 * t)
         print("Release time not specified. r_time set to default of 1/5 of audio length.")
-    elif release < 0.02 and not (t-0.02 <= attack <= t):
-        release = 0.02
+    elif r_time < 20 and not (t-0.02 <= a_time <= t):
+        r_time = 20
         print("Release time must be at least 20ms. r_time set to 20ms.")
-    elif (t-0.02 <= attack <= t):
-        release = t - attack
-        print("Attack time goes to within 20ms of end of audio signal. Release time set to amount of remaining ms, or: ", release)
+    elif (t-0.02 <= a_time <= t):
+        r_time = t - a_time
+        print("Attack time goes to within 20ms of end of audio signal. Release time set to amount of remaining ms, or: ", r_time)
 
-    if attack + decay + release > t:
-        attack = (1/5 * t)
-        decay = (1/5 * t)
-        release = (1/5 * t)
+    if a_time + d_time + r_time > t * 1000:
+        a_time = (1/5 * t * 1000)
+        d_time = (1/5 * t * 1000)
+        r_time = (1/5 * t * 1000)
         print("Attack, decay and release time combine to a duration longer than input audio. Please input smaller values. Values set to defaults (each 1/5 of audio length).")
 
     if sustain is None: 
-        a_samp = int(attack * fs)
+        a_samp = int(a_time * fs / 1000)
         d_samp = 0
-        r_samp = int(release * fs)
+        r_samp = int(r_time * fs / 1000)
         s_samp = 0
         zero_arr = np.zeros((len(data) - a_samp - d_samp - r_samp))
         zero_samp =len(zero_arr)
         env_samp = a_samp + d_samp + r_samp + s_samp + zero_samp #for error handling only
         print("No sustain input. Sustain and decay parameters nullified, only attack and release applied. Amplitude of 0 applied to remainder of audio.")
     else: 
-        a_samp = int(attack * fs)
-        d_samp = int(decay * fs)
-        r_samp = int(release * fs)
+        a_samp = int(a_time * fs / 1000)
+        d_samp = int(d_time * fs / 1000)
+        r_samp = int(r_time * fs / 1000)
         s_samp = int(len(data) - a_samp - d_samp - r_samp)
         zero_arr = []
         zero_samp = len(zero_arr)
@@ -199,8 +203,7 @@ def fm_synth(carrier_type, carrier_freq, mod_index, mod_ratio, dur, fs=44100, am
     The function should return a numpy array
     sig (numpy array) = frequency modulated signal
     """
-    sig = gen_wave(carrier_type, carrier_freq, dur, fs=fs)
-    return sig
+    
 
 # TODO: Replace the code below with your implementation of a AM synthesis
 def am_synth(carrier_type, carrier_freq, mod_depth, mod_ratio, dur, fs=44100, amp=1, modulator_type='sine'):
